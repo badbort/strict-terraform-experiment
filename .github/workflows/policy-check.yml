@@ -49,16 +49,11 @@ jobs:
 
       - name: Run Trivy
         run: |
-          set -x
-          trivy config --help 2>&1 | grep -i -E "check|policy|namespace" || true
           trivy config \
-            --debug \
-            --config-check policy/trivy/strict_modules.rego \
-            --namespaces user \
+            --config-check policy/trivy \
+            --check-namespaces user \
             --exit-code 1 \
-            "${{ inputs.infra-path }}" 2>&1 | tee trivy.log
-          echo "--- STRICT_MOD references in output ---"
-          grep -i "STRICT_MOD\|strict_modules\|custom\|user\." trivy.log || true
+            "${{ inputs.infra-path }}"
 
   checkov:
     name: Checkov (${{ inputs.infra-path }})
