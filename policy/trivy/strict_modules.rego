@@ -1,19 +1,16 @@
 # METADATA
 # title: Only approved modules allowed
 # description: Top-level resources are forbidden; module sources must be local under ../modules/
-# scope: package
-# schemas:
-#   - input: schema["input"]
 # custom:
 #   id: STRICT_MOD_001
 #   avd_id: AVD-CUSTOM-0001
 #   severity: HIGH
-#   short_code: strict-modules
 #   recommended_action: Move the resource into a module under ./modules/ and reference it via a module block.
 #   input:
 #     selector:
 #       - type: terraform-raw
-package user.terraform.strict_modules
+
+package user.terraform.STRICT_MOD_001
 
 deny[res] {
 	some t, n
@@ -31,7 +28,7 @@ deny[res] {
 
 deny[res] {
 	some name
-	mod := input.module[name][_]
+	mod := input.module[name]
 	not startswith(mod.source, "../modules/")
 	msg := sprintf("module '%s' source '%s' must be under ../modules/", [name, mod.source])
 	res := result.new(msg, mod)

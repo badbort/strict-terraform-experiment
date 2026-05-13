@@ -52,7 +52,7 @@ jobs:
           trivy config \
             --config-check policy/trivy \
             --namespaces user \
-            --severity HIGH,CRITICAL \
+            --include-non-failures \
             --exit-code 1 \
             "${{ inputs.infra-path }}"
 
