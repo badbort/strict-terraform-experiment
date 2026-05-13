@@ -100,7 +100,7 @@ jobs:
         run: pip install --upgrade checkov
 
       - name: Run Checkov (soft)
-        # --check filters to ONLY our soft check; built-in checks are skipped.
+        # --check filters to ONLY our soft checks; built-in checks are skipped.
         # When new soft check IDs are added to checkov_custom_soft/, list them
         # here (comma-separated) to surface them in this SARIF.
         run: |
@@ -109,23 +109,28 @@ jobs:
             --directory "${{ inputs.infra-path }}" \
             --external-checks-dir "$(realpath checkov_custom_soft)" \
             --framework terraform \
-            --check CKV_SOFT_MODULE_ATTRS \
+            --check CKV_SOFT_MODULE_ATTRS,CKV_NOTICE_MODULE_ATTRS \
             --output sarif \
             --output-file-path . \
             --soft-fail
           ls -la results_sarif.sarif
 
-      - name: Rewrite SARIF paths to repo-root-relative + strip invalid attachments
-        # Checkov writes `attachments[]` entries that fail GitHub's strict SARIF
-        # schema validation (missing `artifactLocation`, `description` is a string
-        # not an object). Drop them; everything we need is in `locations[]`.
+      - name: Rewrite SARIF paths + downgrade notice rules + strip invalid attachments
+        # Three transforms in one pass:
+        #  1. Drop Checkov's malformed `attachments[]` (fails GitHub SARIF validation).
+        #  2. Force level=note on any rule whose ID starts with CKV_NOTICE_ so the
+        #     notice tier surfaces in code scanning at the lightest severity.
+        #     Checkov has no per-check severity API for external checks, so we
+        #     normalize after the fact.
+        #  3. Make artifactLocation.uri repo-root-relative.
         run: |
           set -euo pipefail
           prefix="${{ inputs.infra-path }}/"
           jq --arg p "$prefix" '
             .runs |= map(
               .results |= map(
-                (.attachments |= []) |
+                del(.attachments) |
+                (if (.ruleId // "" | startswith("CKV_NOTICE_")) then .level = "note" else . end) |
                 (.locations |= map(
                   .physicalLocation.artifactLocation.uri |=
                     (if startswith("/") or startswith($p) then . else $p + . end)
@@ -137,6 +142,7 @@ jobs:
           echo "--- SARIF preview ---"
           jq '{
             findings: (.runs[0].results | length),
+            by_level: ([.runs[0].results[].level] | group_by(.) | map({(.[0]): length}) | add),
             paths:    [.runs[0].results[].locations[0].physicalLocation.artifactLocation.uri] | unique
           }' results_sarif.sarif
 

@@ -1,12 +1,11 @@
 # METADATA
-# title: Module attribute advisory checks
+# title: Module attribute preference notices
 # description: >-
-#   Advisory rules that verify specific module calls set sensitive attributes
-#   to safe values. Each entry in `module_attribute_rules` targets a single
-#   module (matched by source suffix) and a single attribute. A violation is
-#   emitted whenever the attribute is explicitly set AND its value differs
-#   from the declared `expected`. Unset attributes fall back to the module's
-#   own default and never trigger a finding.
+#   Notice-level (LOW severity) advisory checks. Same engine and registry shape
+#   as module_attributes.rego, but findings surface as SARIF level=note instead
+#   of warning — the lightest tier of "we noticed something you might want to
+#   look at" guidance. Suitable for rules that express team preference rather
+#   than security concerns.
 #
 #   To extend:
 #     - New rule for the SAME module: append an entry with the same source_suffix.
@@ -15,35 +14,27 @@
 # schemas:
 #   - input: schema["terraform-raw"]
 # custom:
-#   id: USR-MODATTR-0001
-#   avd_id: USR-MODATTR-0001
-#   severity: MEDIUM
-#   short_code: module-attribute-policy
-#   recommended_actions: "Restore the safe default, or document the exception and obtain approval."
+#   id: USR-MODNOTICE-0001
+#   avd_id: USR-MODNOTICE-0001
+#   severity: LOW
+#   short_code: module-attribute-notice
+#   recommended_actions: "Consider aligning with the team default; comment-justify if you really mean it."
 #   input:
 #     selector:
 #       - type: terraform-raw
 
-package user.terraform.module_attributes
+package user.terraform.module_attributes_notice
 
 import rego.v1
 
 # ── Registry ────────────────────────────────────────────────────────────────
-# Each rule:
-#   source_suffix : tail of the `source = "..."` attribute on the module call
-#                   (suffix match accommodates "../modules/good/auditor",
-#                   "github.com/org/auditor", etc.)
-#   attribute     : attribute name on the module call
-#   message       : sprintf template; %s is replaced with the module instance name
-#   AND ONE OF:
-#     expected    : the value the attribute MUST equal for the rule to pass
-#     forbidden   : list of values that MUST NOT appear
+# Same schema as module_attributes.rego — rules here just live at LOW severity.
 module_attribute_rules := [
 	{
-		"source_suffix": "/auditor",
-		"attribute": "secure",
-		"expected": true,
-		"message": "auditor module '%s' has secure = false; review and approve if intentional",
+		"source_suffix": "/logger",
+		"attribute": "log_level",
+		"forbidden": ["DEBUG", "TRACE"],
+		"message": "logger module '%s' uses a verbose log_level; consider raising before promoting",
 	},
 ]
 

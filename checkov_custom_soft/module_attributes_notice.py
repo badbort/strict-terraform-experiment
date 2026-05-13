@@ -1,24 +1,21 @@
-"""Soft (advisory) per-module attribute policy for Checkov — WARNING tier.
+"""Soft per-module attribute policy for Checkov — NOTICE tier.
 
-Mirrors the shape of policy/trivy-soft/module_attributes.rego so both tools
-read from a single registry concept. The check fires per *module call* in the
-root module and emits one Checkov finding per module that violates any rule.
-
-Each rule must declare ONE OF:
-  expected  : the value the attribute MUST equal
-  forbidden : list of values the attribute MUST NOT be
+Same engine and registry shape as module_attributes.py, but the workflow's
+SARIF post-process step rewrites this check's level to `note` so it surfaces
+in code scanning as a notice rather than a warning. Use for team preferences
+that don't merit a warning.
 """
 
 from checkov.common.models.enums import CheckCategories, CheckResult
 from checkov.terraform.checks.module.base_module_check import BaseModuleCheck
 
 
-MODULE_ATTRIBUTE_RULES = [
+MODULE_ATTRIBUTE_NOTICE_RULES = [
     {
-        "source_suffix": "/auditor",
-        "attribute": "secure",
-        "expected": True,
-        "message": "auditor module has secure = false; review and approve if intentional",
+        "source_suffix": "/logger",
+        "attribute": "log_level",
+        "forbidden": ["DEBUG", "TRACE"],
+        "message": "logger module uses a verbose log_level; consider raising before promoting",
     },
 ]
 
@@ -40,18 +37,18 @@ def _violates(rule, actual):
     return False
 
 
-class ModuleAttributePolicy(BaseModuleCheck):
+class ModuleAttributePreferences(BaseModuleCheck):
     def __init__(self):
         super().__init__(
-            name="Module attribute advisory checks",
-            id="CKV_SOFT_MODULE_ATTRS",
+            name="Module attribute preferences (notice)",
+            id="CKV_NOTICE_MODULE_ATTRS",
             categories=(CheckCategories.GENERAL_SECURITY,),
             supported_resources=("module",),
         )
 
     def scan_module_conf(self, conf):
         source = _first(conf, "source", "")
-        for rule in MODULE_ATTRIBUTE_RULES:
+        for rule in MODULE_ATTRIBUTE_NOTICE_RULES:
             if not str(source).endswith(rule["source_suffix"]):
                 continue
             actual = _first(conf, rule["attribute"])
@@ -62,4 +59,4 @@ class ModuleAttributePolicy(BaseModuleCheck):
         return CheckResult.PASSED
 
 
-check = ModuleAttributePolicy()
+check = ModuleAttributePreferences()

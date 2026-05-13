@@ -2,7 +2,7 @@ module "startup_logger" {
   source = "../modules/good/logger"
 
   log_message = "infrastructure apply started"
-  log_level   = "INFO"
+  log_level   = "DEBUG"
 }
 
 module "boot_auditor" {
