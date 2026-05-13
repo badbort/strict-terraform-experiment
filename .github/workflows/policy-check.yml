@@ -50,6 +50,7 @@ jobs:
       - name: Run Trivy
         run: |
           trivy config \
+            --raw-config-scanners=terraform \
             --config-check policy/trivy \
             --check-namespaces user \
             --exit-code 1 \
