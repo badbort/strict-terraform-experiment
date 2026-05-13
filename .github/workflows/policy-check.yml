@@ -1,0 +1,78 @@
+name: Policy check
+
+on:
+  workflow_call:
+    inputs:
+      infra-path:
+        description: Path to the Terraform infra directory to scan.
+        required: true
+        type: string
+
+jobs:
+  conftest:
+    name: Conftest (${{ inputs.infra-path }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Conftest
+        run: |
+          set -euo pipefail
+          version=0.68.2
+          curl -sSL "https://github.com/open-policy-agent/conftest/releases/download/v${version}/conftest_${version}_Linux_x86_64.tar.gz" \
+            | tar -xz conftest
+          sudo install conftest /usr/local/bin/conftest
+          conftest --version
+
+      - name: Run Conftest
+        run: |
+          conftest test \
+            --parser hcl2 \
+            --policy policy/conftest \
+            --no-color=false \
+            "${{ inputs.infra-path }}"
+
+  trivy:
+    name: Trivy (${{ inputs.infra-path }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Trivy
+        run: |
+          set -euo pipefail
+          version=0.70.0
+          curl -sSL "https://github.com/aquasecurity/trivy/releases/download/v${version}/trivy_${version}_Linux-64bit.tar.gz" \
+            | tar -xz trivy
+          sudo install trivy /usr/local/bin/trivy
+          trivy --version
+
+      - name: Run Trivy
+        run: |
+          trivy config \
+            --raw-config-scanners=terraform \
+            --config-check policy/trivy \
+            --check-namespaces user \
+            --exit-code 1 \
+            "${{ inputs.infra-path }}"
+
+  checkov:
+    name: Checkov (${{ inputs.infra-path }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Checkov
+        run: pip install --upgrade checkov
+
+      - name: Run Checkov
+        run: |
+          checkov \
+            --directory "${{ inputs.infra-path }}" \
+            --external-checks-dir "$(realpath checkov_custom)" \
+            --framework terraform \
+            --compact
