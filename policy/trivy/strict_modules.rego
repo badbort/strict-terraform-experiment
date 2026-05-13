@@ -18,11 +18,11 @@ package user.terraform.strict_modules
 
 import rego.v1
 
-# DEBUG: trigger compile error to learn module schema
-_probe := input.modules[_].PROBE_FIELDS
+is_root_module(module) if module.module_path == module.root_path
 
 deny contains res if {
 	some module in input.modules
+	is_root_module(module)
 	some block in module.blocks
 	block.kind == "resource"
 	res := result.new(
@@ -33,6 +33,7 @@ deny contains res if {
 
 deny contains res if {
 	some module in input.modules
+	is_root_module(module)
 	some block in module.blocks
 	block.kind == "data"
 	res := result.new(
@@ -43,6 +44,7 @@ deny contains res if {
 
 deny contains res if {
 	some module in input.modules
+	is_root_module(module)
 	some block in module.blocks
 	block.kind == "module"
 	src := block.attributes.source.value
