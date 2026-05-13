@@ -38,9 +38,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: aquasecurity/setup-trivy@v0.2.3
-        with:
-          version: v0.58.2
+      - name: Install Trivy
+        run: |
+          set -euo pipefail
+          curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sudo sh -s -- -b /usr/local/bin v0.58.2
+          trivy --version
 
       - name: Run Trivy
         run: |
@@ -49,7 +52,6 @@ jobs:
             --namespaces user \
             --severity HIGH,CRITICAL \
             --exit-code 1 \
-            --tf-exclude-downloaded-modules \
             "${{ inputs.infra-path }}"
 
   checkov:
@@ -72,5 +74,4 @@ jobs:
             --external-checks-dir checkov_custom \
             --check CKV_CUSTOM_1 \
             --framework terraform \
-            --quiet \
             --compact
