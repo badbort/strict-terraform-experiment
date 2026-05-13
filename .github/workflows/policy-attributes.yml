@@ -115,14 +115,17 @@ jobs:
             --soft-fail
           ls -la results_sarif.sarif
 
-      - name: Rewrite SARIF paths + downgrade notice rules + strip invalid attachments
-        # Three transforms in one pass:
+      - name: Rewrite SARIF paths + normalize levels + strip invalid attachments
+        # Four transforms in one pass:
         #  1. Drop Checkov's malformed `attachments[]` (fails GitHub SARIF validation).
-        #  2. Force level=note on any rule whose ID starts with CKV_NOTICE_ so the
-        #     notice tier surfaces in code scanning at the lightest severity.
-        #     Checkov has no per-check severity API for external checks, so we
-        #     normalize after the fact.
-        #  3. Make artifactLocation.uri repo-root-relative.
+        #  2. Force level=note  on any rule whose ID starts with CKV_NOTICE_
+        #     so the notice tier surfaces at the lightest severity.
+        #  3. Force level=warning on any rule whose ID starts with CKV_SOFT_
+        #     so the warning tier matches Trivy's MEDIUM-severity rendering
+        #     instead of Checkov's default "everything failed = error".
+        #  4. Make artifactLocation.uri repo-root-relative.
+        # Checkov has no per-check severity API for external customs, so we
+        # normalize after the fact rather than fight the model.
         run: |
           set -euo pipefail
           prefix="${{ inputs.infra-path }}/"
@@ -130,7 +133,10 @@ jobs:
             .runs |= map(
               .results |= map(
                 del(.attachments) |
-                (if (.ruleId // "" | startswith("CKV_NOTICE_")) then .level = "note" else . end) |
+                (if   (.ruleId // "" | startswith("CKV_NOTICE_")) then .level = "note"
+                 elif (.ruleId // "" | startswith("CKV_SOFT_"))   then .level = "warning"
+                 else .
+                 end) |
                 (.locations |= map(
                   .physicalLocation.artifactLocation.uri |=
                     (if startswith("/") or startswith($p) then . else $p + . end)
