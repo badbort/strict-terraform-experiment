@@ -12,6 +12,10 @@
 
 package user.terraform.STRICT_MOD_001
 
+deny[msg] {
+	msg := "DEBUG: STRICT_MOD_001 policy is evaluating (this rule has no condition)"
+}
+
 deny[res] {
 	some t, n
 	resource := input.resource[t][n]
