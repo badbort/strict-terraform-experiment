@@ -1,3 +1,7 @@
+import sys
+
+print("DEBUG CKV_CUSTOM_1: module no_root_resources.py imported", file=sys.stderr, flush=True)
+
 from checkov.common.models.enums import CheckCategories, CheckResult
 from checkov.terraform.checks.resource.base_resource_check import BaseResourceCheck
 
