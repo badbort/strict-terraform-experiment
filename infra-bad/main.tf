@@ -1,5 +1,5 @@
 module "startup_logger" {
-  source = "../modules/logger"
+  source = "../modules/good/logger"
 
   log_message = "infra-bad apply started"
   log_level   = "INFO"
