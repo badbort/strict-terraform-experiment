@@ -21,3 +21,7 @@ data "null_data_source" "lookup" {
   }
 }
 
+module "external_registry" {
+  source  = "registry.terraform.io/some-org/some-module/aws"
+  version = "1.0.0"
+}

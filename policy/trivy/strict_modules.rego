@@ -21,6 +21,13 @@ import rego.v1
 deny contains res if {
 	some module in input.modules
 	some block in module.blocks
+	msg := sprintf("DEBUG block kind=%v type=%v name=%v", [block.kind, block.type, block.name])
+	res := result.new(msg, block)
+}
+
+deny contains res if {
+	some module in input.modules
+	some block in module.blocks
 	block.kind == "resource"
 	res := result.new(
 		sprintf("raw resource '%s.%s' is forbidden; use a module from ../modules/", [block.type, block.name]),

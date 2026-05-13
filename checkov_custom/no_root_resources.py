@@ -8,7 +8,7 @@ class NoRootResources(BaseResourceCheck):
             name="Resources must be declared inside an approved module",
             id="CKV_CUSTOM_1",
             categories=(CheckCategories.GENERAL_SECURITY,),
-            supported_resources=("*",),
+            supported_resources=("null_resource",),
         )
 
     def scan_resource_conf(self, conf):
