@@ -19,10 +19,29 @@ package user.terraform.strict_modules
 import rego.v1
 
 deny contains res if {
+	keys := object.keys(input)
+	res := result.new(
+		sprintf("DEBUG: input top-level keys = %v", [keys]),
+		input,
+	)
+}
+
+deny contains res if {
+	some module in input.modules
+	mkeys := object.keys(module)
+	res := result.new(
+		sprintf("DEBUG: module keys = %v", [mkeys]),
+		module,
+	)
+}
+
+deny contains res if {
 	some module in input.modules
 	some block in module.blocks
-	msg := sprintf("DEBUG block kind=%v type=%v name=%v", [block.kind, block.type, block.name])
-	res := result.new(msg, block)
+	res := result.new(
+		sprintf("DEBUG block kind=%v type=%v name=%v", [block.kind, block.type, block.name]),
+		block,
+	)
 }
 
 deny contains res if {
