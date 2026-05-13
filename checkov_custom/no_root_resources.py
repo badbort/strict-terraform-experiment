@@ -13,6 +13,7 @@ class NoRootResources(BaseResourceCheck):
 
     def scan_resource_conf(self, conf):
         path = (getattr(self, "file_abs_path", "") or "").replace("\\", "/")
+        print(f"DEBUG CKV_CUSTOM_1: file_abs_path={path}", flush=True)
         if "/modules/" in path:
             return CheckResult.PASSED
         return CheckResult.FAILED
