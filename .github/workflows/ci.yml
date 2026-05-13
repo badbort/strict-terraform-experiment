@@ -1,0 +1,19 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  good-infra:
+    name: Good infra (expected to pass)
+    uses: ./.github/workflows/policy-check.yml
+    with:
+      infra-path: infra
+
+  bad-infra:
+    name: Bad infra (expected to fail)
+    uses: ./.github/workflows/policy-check.yml
+    with:
+      infra-path: infra-bad
