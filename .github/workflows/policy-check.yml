@@ -71,8 +71,12 @@ jobs:
 
       - name: Run Checkov
         run: |
+          echo "--- checkov_custom contents ---"
+          ls -la checkov_custom/
+          echo "--- abs path ---"
+          realpath checkov_custom
           checkov \
             --directory "${{ inputs.infra-path }}" \
-            --external-checks-dir checkov_custom \
+            --external-checks-dir "$(realpath checkov_custom)" \
             --framework terraform \
             --compact
