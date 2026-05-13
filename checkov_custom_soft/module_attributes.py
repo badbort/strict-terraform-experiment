@@ -68,7 +68,6 @@ class ModuleAttributePolicy(BaseModuleCheck):
             if actual is None:
                 continue
             if actual != rule["expected"]:
-                self.details = [rule["message"]]
                 return CheckResult.FAILED
         return CheckResult.PASSED
 

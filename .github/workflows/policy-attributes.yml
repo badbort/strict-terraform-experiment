@@ -115,17 +115,21 @@ jobs:
             --soft-fail
           ls -la results_sarif.sarif
 
-      - name: Rewrite SARIF paths to repo-root-relative
+      - name: Rewrite SARIF paths to repo-root-relative + strip invalid attachments
+        # Checkov writes `attachments[]` entries that fail GitHub's strict SARIF
+        # schema validation (missing `artifactLocation`, `description` is a string
+        # not an object). Drop them; everything we need is in `locations[]`.
         run: |
           set -euo pipefail
           prefix="${{ inputs.infra-path }}/"
           jq --arg p "$prefix" '
             .runs |= map(
               .results |= map(
-                .locations |= map(
+                (.attachments |= []) |
+                (.locations |= map(
                   .physicalLocation.artifactLocation.uri |=
                     (if startswith("/") or startswith($p) then . else $p + . end)
-                )
+                ))
               )
             )
           ' results_sarif.sarif > results_sarif.sarif.tmp
