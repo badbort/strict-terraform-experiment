@@ -5,15 +5,27 @@ on:
   push:
     branches: [main]
 
+# The reusable workflow's secure-attrs job uploads a SARIF report to GitHub
+# code scanning, which requires security-events: write at the caller level.
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   good-infra:
     name: Good infra (expected to pass)
+    permissions:
+      contents: read
+      security-events: write
     uses: ./.github/workflows/policy-check.yml
     with:
       infra-path: infra
 
   bad-infra:
     name: Bad infra (expected to fail)
+    permissions:
+      contents: read
+      security-events: write
     uses: ./.github/workflows/policy-check.yml
     with:
       infra-path: infra-bad

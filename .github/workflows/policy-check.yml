@@ -76,3 +76,44 @@ jobs:
             --external-checks-dir "$(realpath checkov_custom)" \
             --framework terraform \
             --compact
+
+  secure-attrs:
+    # Soft / advisory check: emits a SARIF report for every module call that opts
+    # out of the secure default. Never fails the build (--exit-code 0); the SARIF
+    # upload surfaces findings as GitHub code-scanning annotations on the PR.
+    name: Secure-attr SARIF (${{ inputs.infra-path }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Trivy
+        run: |
+          set -euo pipefail
+          version=0.70.0
+          curl -sSL "https://github.com/aquasecurity/trivy/releases/download/v${version}/trivy_${version}_Linux-64bit.tar.gz" \
+            | tar -xz trivy
+          sudo install trivy /usr/local/bin/trivy
+          trivy --version
+
+      - name: Run Trivy (SARIF, advisory)
+        run: |
+          trivy config \
+            --raw-config-scanners=terraform \
+            --config-check policy/trivy-soft \
+            --check-namespaces user \
+            --format sarif \
+            --output trivy.sarif \
+            --exit-code 0 \
+            "${{ inputs.infra-path }}"
+          echo "--- SARIF preview ---"
+          jq '.runs[].results | length as $n | "findings: \($n)"' trivy.sarif || cat trivy.sarif
+
+      - name: Upload SARIF to GitHub code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy.sarif
+          category: secure-attrs-${{ inputs.infra-path }}
