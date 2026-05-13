@@ -18,6 +18,9 @@ package user.terraform.strict_modules
 
 import rego.v1
 
+# DEBUG: trigger compile error to learn module schema
+_probe := input.modules[_].PROBE_FIELDS
+
 deny contains res if {
 	some module in input.modules
 	some block in module.blocks
