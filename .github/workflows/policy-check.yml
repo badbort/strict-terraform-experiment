@@ -108,8 +108,31 @@ jobs:
             --output trivy.sarif \
             --exit-code 0 \
             "${{ inputs.infra-path }}"
+
+      - name: Rewrite SARIF paths to be repo-root-relative
+        # Trivy emits artifactLocation.uri as scan-target-relative (e.g. "main.tf"),
+        # but GitHub code scanning needs repo-relative paths (e.g. "infra/main.tf")
+        # to map findings onto the PR diff. Otherwise the Trivy check reports
+        # "No new alerts in code changed by this pull request" even when there are.
+        run: |
+          set -euo pipefail
+          prefix="${{ inputs.infra-path }}/"
+          jq --arg p "$prefix" '
+            .runs |= map(
+              .results |= map(
+                .locations |= map(
+                  .physicalLocation.artifactLocation.uri |=
+                    (if startswith("/") or startswith($p) then . else $p + . end)
+                )
+              )
+            )
+          ' trivy.sarif > trivy.sarif.tmp
+          mv trivy.sarif.tmp trivy.sarif
           echo "--- SARIF preview ---"
-          jq '.runs[].results | length as $n | "findings: \($n)"' trivy.sarif || cat trivy.sarif
+          jq '{
+            findings: (.runs[0].results | length),
+            paths: [.runs[0].results[].locations[0].physicalLocation.artifactLocation.uri] | unique
+          }' trivy.sarif
 
       - name: Upload SARIF to GitHub code scanning
         # Code scanning is free on public repos and requires GitHub Advanced
