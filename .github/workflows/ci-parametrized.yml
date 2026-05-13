@@ -1,0 +1,33 @@
+name: CI (parametrized policy)
+
+# Demonstrates that the parametrized reusable workflow's behavior changes
+# purely as a function of its `allowed-module-sources` input. Both jobs scan
+# `infra-bad/`, which contains:
+#   - a module sourced from `../modules/logger`
+#   - a module sourced from `registry.terraform.io/some-org/some-module/aws`
+#   - a raw resource and a raw data source (always denied)
+#
+# With the strict allow list, the registry module is denied. With the permissive
+# allow list (which adds the registry prefix), only the raw resource/data
+# denials remain. Either way the run fails (raw resource/data are unconditional),
+# but the Conftest/Trivy output will differ on the module-source denial.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  strict-allowlist:
+    name: Bad infra w/ strict allow list (registry module should be denied)
+    uses: ./.github/workflows/policy-check-parametrized.yml
+    with:
+      infra-path: infra-bad
+      allowed-module-sources: '["../modules/"]'
+
+  permissive-allowlist:
+    name: Bad infra w/ permissive allow list (registry module allowed)
+    uses: ./.github/workflows/policy-check-parametrized.yml
+    with:
+      infra-path: infra-bad
+      allowed-module-sources: '["../modules/","registry.terraform.io/"]'
