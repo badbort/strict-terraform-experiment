@@ -2,15 +2,18 @@ name: CI (parametrized policy)
 
 # Demonstrates that the parametrized reusable workflow's behavior changes
 # purely as a function of its `allowed-module-sources` input. Both jobs scan
-# `infra-bad/`, which contains:
-#   - a module sourced from `../modules/good/logger`
+# `infra/bad/`, which contains:
+#   - a module sourced from `../../modules/good/logger`
+#   - a module sourced from `../../modules/bad/legacy_provisioner`
 #   - a module sourced from `registry.terraform.io/some-org/some-module/aws`
 #   - a raw resource and a raw data source (always denied)
 #
-# With the strict allow list, the registry module is denied. With the permissive
-# allow list (which adds the registry prefix), only the raw resource/data
-# denials remain. Either way the run fails (raw resource/data are unconditional),
-# but the Conftest/Trivy output will differ on the module-source denial.
+# With the strict allow list, both the legacy_provisioner module and the
+# registry module are denied. With the permissive allow list (which adds the
+# registry prefix), the registry module passes, but legacy_provisioner is
+# still denied (it lives under modules/bad/, which neither allow list permits).
+# Either way the run fails (raw resource/data are unconditional), but the
+# Conftest/Trivy output differs on which module-source denials appear.
 
 on:
   pull_request:
@@ -22,12 +25,12 @@ jobs:
     name: Bad infra w/ strict allow list (registry module should be denied)
     uses: ./.github/workflows/policy-check-parametrized.yml
     with:
-      infra-path: infra-bad
-      allowed-module-sources: '["../modules/good/"]'
+      infra-path: infra/bad
+      allowed-module-sources: '["../../modules/good/"]'
 
   permissive-allowlist:
     name: Bad infra w/ permissive allow list (registry module allowed)
     uses: ./.github/workflows/policy-check-parametrized.yml
     with:
-      infra-path: infra-bad
-      allowed-module-sources: '["../modules/good/","registry.terraform.io/"]'
+      infra-path: infra/bad
+      allowed-module-sources: '["../../modules/good/","registry.terraform.io/"]'

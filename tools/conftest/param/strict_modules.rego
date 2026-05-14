@@ -1,7 +1,7 @@
 package main
 
 # Allowed module source prefixes are injected via `conftest test --data allowed.json`.
-# allowed.json shape: {"allowed":{"module_sources":["../modules/","../shared-modules/"]}}
+# allowed.json shape: {"allowed":{"module_sources":["../../modules/good/","../../shared-modules/"]}}
 
 allowed_sources := data.allowed.module_sources
 

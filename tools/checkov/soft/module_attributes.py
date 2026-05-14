@@ -1,6 +1,6 @@
 """Soft (advisory) per-module attribute policy for Checkov — WARNING tier.
 
-Mirrors the shape of policy/trivy-soft/module_attributes.rego so both tools
+Mirrors the shape of tools/trivy/soft/module_attributes.rego so both tools
 read from a single registry concept. The check fires per *module call* in the
 root module and emits one Checkov finding per module that violates any rule.
 

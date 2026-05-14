@@ -21,7 +21,7 @@ jobs:
       security-events: write
     uses: ./.github/workflows/policy-check.yml
     with:
-      infra-path: infra
+      infra-path: infra/good
 
   bad-infra:
     name: Bad infra (expected to fail)
@@ -30,7 +30,7 @@ jobs:
       security-events: write
     uses: ./.github/workflows/policy-check.yml
     with:
-      infra-path: infra-bad
+      infra-path: infra/bad
 
   # ─── Soft / advisory attribute layer ──────────────────────────────────────
   good-infra-attrs:
@@ -40,7 +40,7 @@ jobs:
       security-events: write
     uses: ./.github/workflows/policy-attributes.yml
     with:
-      infra-path: infra
+      infra-path: infra/good
 
   bad-infra-attrs:
     name: Bad infra attributes (advisory)
@@ -49,4 +49,4 @@ jobs:
       security-events: write
     uses: ./.github/workflows/policy-attributes.yml
     with:
-      infra-path: infra-bad
+      infra-path: infra/bad

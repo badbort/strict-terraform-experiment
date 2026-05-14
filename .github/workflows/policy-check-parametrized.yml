@@ -48,7 +48,7 @@ jobs:
         run: |
           conftest test \
             --parser hcl2 \
-            --policy policy/conftest-param \
+            --policy tools/conftest/param \
             --data allowed.json \
             --no-color=false \
             "${{ inputs.infra-path }}"
@@ -80,7 +80,7 @@ jobs:
         run: |
           trivy config \
             --raw-config-scanners=terraform \
-            --config-check policy/trivy-param \
+            --config-check tools/trivy/param \
             --check-namespaces user \
             --config-data allowed.json \
             --exit-code 1 \
@@ -117,6 +117,6 @@ jobs:
         run: |
           checkov \
             --directory "${{ inputs.infra-path }}" \
-            --external-checks-dir "$(realpath checkov_custom_param)" \
+            --external-checks-dir "$(realpath tools/checkov/param)" \
             --framework terraform \
             --compact

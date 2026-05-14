@@ -19,7 +19,7 @@ package user.terraform.strict_modules
 import rego.v1
 
 # Extend the policy by adding entries to this list - no rule logic changes required.
-allowed_module_prefixes := ["../modules/good/"]
+allowed_module_prefixes := ["../../modules/good/"]
 
 is_allowed(src) if {
 	some p in allowed_module_prefixes

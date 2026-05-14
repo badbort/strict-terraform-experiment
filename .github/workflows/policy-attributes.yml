@@ -36,7 +36,7 @@ jobs:
         run: |
           trivy config \
             --raw-config-scanners=terraform \
-            --config-check policy/trivy-soft \
+            --config-check tools/trivy/soft \
             --check-namespaces user \
             --format sarif \
             --output trivy.sarif \
@@ -101,13 +101,13 @@ jobs:
 
       - name: Run Checkov (soft)
         # --check filters to ONLY our soft checks; built-in checks are skipped.
-        # When new soft check IDs are added to checkov_custom_soft/, list them
+        # When new soft check IDs are added to tools/checkov/soft/, list them
         # here (comma-separated) to surface them in this SARIF.
         run: |
           set -euo pipefail
           checkov \
             --directory "${{ inputs.infra-path }}" \
-            --external-checks-dir "$(realpath checkov_custom_soft)" \
+            --external-checks-dir "$(realpath tools/checkov/soft)" \
             --framework terraform \
             --check CKV_SOFT_MODULE_ATTRS,CKV_NOTICE_MODULE_ATTRS \
             --output sarif \
