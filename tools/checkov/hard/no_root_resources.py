@@ -5,7 +5,7 @@ from checkov.terraform.checks.resource.base_resource_check import BaseResourceCh
 # Extend the policy by adding entries to this list - no rule logic changes required.
 # Checkov's `entity_path` is a string like "/path/to/file.tf:resource_type:name",
 # so we substring-match (not prefix-match) anywhere in that path.
-ALLOWED_PATH_SUBSTRINGS = ("/modules/", "/approved-modules/")
+ALLOWED_PATH_SUBSTRINGS = ("/modules/good/",)
 
 
 class NoRootResources(BaseResourceCheck):

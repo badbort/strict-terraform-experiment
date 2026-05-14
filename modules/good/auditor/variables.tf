@@ -13,3 +13,9 @@ variable "severity" {
     error_message = "severity must be one of DEBUG, INFO, WARN, ERROR."
   }
 }
+
+variable "secure" {
+  description = "When false, the auditor runs in relaxed mode (logging without integrity checks). Setting this to false is permitted but tracked via code-scanning annotations."
+  type        = bool
+  default     = true
+}

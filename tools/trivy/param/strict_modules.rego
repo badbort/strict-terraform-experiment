@@ -19,7 +19,7 @@ package user.terraform.strict_modules_param
 import rego.v1
 
 # Allowed module source prefixes are injected via `trivy config --config-data allowed.json`.
-# allowed.json shape: {"allowed":{"module_sources":["../modules/","../shared-modules/"]}}
+# allowed.json shape: {"allowed":{"module_sources":["../../modules/good/","../../shared-modules/"]}}
 
 allowed_sources := data.allowed.module_sources
 

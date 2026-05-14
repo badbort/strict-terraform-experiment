@@ -13,6 +13,7 @@ resource "null_resource" "audit" {
   triggers = {
     event    = var.event_name
     severity = var.severity
+    secure   = tostring(var.secure)
   }
 
   provisioner "local-exec" {

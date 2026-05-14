@@ -1,0 +1,181 @@
+name: Policy attributes (soft / advisory)
+
+# The "soft" policy layer: runs per-tool attribute checks against a given
+# infra path, emits SARIF, and uploads to GitHub Code Scanning so findings
+# show up as PR annotations and Security tab alerts. None of these jobs
+# fail the build on a finding — they're advisory by design.
+
+on:
+  workflow_call:
+    inputs:
+      infra-path:
+        description: Path to the Terraform infra directory to scan.
+        required: true
+        type: string
+
+jobs:
+  trivy-attributes:
+    name: Trivy attribute SARIF (${{ inputs.infra-path }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute infra slug
+        # `actions/upload-artifact@v4` rejects `/` in artifact names, so we
+        # derive a slash-free slug from infra-path (e.g. `infra/good` ->
+        # `infra-good`) and reuse it for the code-scanning category too.
+        id: slug
+        run: echo "value=$(echo '${{ inputs.infra-path }}' | tr '/' '-')" >> "$GITHUB_OUTPUT"
+
+      - name: Install Trivy
+        run: |
+          set -euo pipefail
+          version=0.70.0
+          curl -sSL "https://github.com/aquasecurity/trivy/releases/download/v${version}/trivy_${version}_Linux-64bit.tar.gz" \
+            | tar -xz trivy
+          sudo install trivy /usr/local/bin/trivy
+          trivy --version
+
+      - name: Run Trivy
+        run: |
+          trivy config \
+            --raw-config-scanners=terraform \
+            --config-check tools/trivy/soft \
+            --check-namespaces user \
+            --format sarif \
+            --output trivy.sarif \
+            --exit-code 0 \
+            "${{ inputs.infra-path }}"
+
+      - name: Rewrite SARIF paths to repo-root-relative
+        # Trivy emits paths relative to the scan target (e.g. "main.tf"), but
+        # code scanning needs them relative to the repo root ("infra/main.tf")
+        # to match the PR diff and surface annotations.
+        run: |
+          set -euo pipefail
+          prefix="${{ inputs.infra-path }}/"
+          jq --arg p "$prefix" '
+            .runs |= map(
+              .results |= map(
+                .locations |= map(
+                  .physicalLocation.artifactLocation.uri |=
+                    (if startswith("/") or startswith($p) then . else $p + . end)
+                )
+              )
+            )
+          ' trivy.sarif > trivy.sarif.tmp
+          mv trivy.sarif.tmp trivy.sarif
+          echo "--- SARIF preview ---"
+          jq '{
+            findings: (.runs[0].results | length),
+            paths:    [.runs[0].results[].locations[0].physicalLocation.artifactLocation.uri] | unique
+          }' trivy.sarif
+
+      - name: Upload SARIF to GitHub code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy.sarif
+          category: attrs-trivy-${{ steps.slug.outputs.value }}
+
+      - name: Upload SARIF as workflow artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: attrs-trivy-sarif-${{ steps.slug.outputs.value }}
+          path: trivy.sarif
+          if-no-files-found: warn
+
+  checkov-attributes:
+    name: Checkov attribute SARIF (${{ inputs.infra-path }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute infra slug
+        # See trivy-attributes job for rationale.
+        id: slug
+        run: echo "value=$(echo '${{ inputs.infra-path }}' | tr '/' '-')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Checkov
+        run: pip install --upgrade checkov
+
+      - name: Run Checkov (soft)
+        # --check filters to ONLY our soft checks; built-in checks are skipped.
+        # When new soft check IDs are added to tools/checkov/soft/, list them
+        # here (comma-separated) to surface them in this SARIF.
+        run: |
+          set -euo pipefail
+          checkov \
+            --directory "${{ inputs.infra-path }}" \
+            --external-checks-dir "$(realpath tools/checkov/soft)" \
+            --framework terraform \
+            --check CKV_SOFT_MODULE_ATTRS,CKV_NOTICE_MODULE_ATTRS \
+            --output sarif \
+            --output-file-path . \
+            --soft-fail
+          ls -la results_sarif.sarif
+
+      - name: Rewrite SARIF paths + normalize levels + strip invalid attachments
+        # Four transforms in one pass:
+        #  1. Drop Checkov's malformed `attachments[]` (fails GitHub SARIF validation).
+        #  2. Force level=note  on any rule whose ID starts with CKV_NOTICE_
+        #     so the notice tier surfaces at the lightest severity.
+        #  3. Force level=warning on any rule whose ID starts with CKV_SOFT_
+        #     so the warning tier matches Trivy's MEDIUM-severity rendering
+        #     instead of Checkov's default "everything failed = error".
+        #  4. Make artifactLocation.uri repo-root-relative.
+        # Checkov has no per-check severity API for external customs, so we
+        # normalize after the fact rather than fight the model.
+        run: |
+          set -euo pipefail
+          prefix="${{ inputs.infra-path }}/"
+          jq --arg p "$prefix" '
+            .runs |= map(
+              .results |= map(
+                del(.attachments) |
+                (if   (.ruleId // "" | startswith("CKV_NOTICE_")) then .level = "note"
+                 elif (.ruleId // "" | startswith("CKV_SOFT_"))   then .level = "warning"
+                 else .
+                 end) |
+                (.locations |= map(
+                  .physicalLocation.artifactLocation.uri |=
+                    (if startswith("/") or startswith($p) then . else $p + . end)
+                ))
+              )
+            )
+          ' results_sarif.sarif > results_sarif.sarif.tmp
+          mv results_sarif.sarif.tmp results_sarif.sarif
+          echo "--- SARIF preview ---"
+          jq '{
+            findings: (.runs[0].results | length),
+            by_level: ([.runs[0].results[].level] | group_by(.) | map({(.[0]): length}) | add),
+            paths:    [.runs[0].results[].locations[0].physicalLocation.artifactLocation.uri] | unique
+          }' results_sarif.sarif
+
+      - name: Upload SARIF to GitHub code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results_sarif.sarif
+          category: attrs-checkov-${{ steps.slug.outputs.value }}
+
+      - name: Upload SARIF as workflow artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: attrs-checkov-sarif-${{ steps.slug.outputs.value }}
+          path: results_sarif.sarif
+          if-no-files-found: warn

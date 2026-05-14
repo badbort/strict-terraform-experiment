@@ -1,7 +1,7 @@
 package main
 
 # Extend the policy by adding entries to this list - no rule logic changes required.
-allowed_module_prefixes := ["../modules/", "../approved-modules/"]
+allowed_module_prefixes := ["../../modules/good/"]
 
 is_allowed(src) if {
 	some p in allowed_module_prefixes

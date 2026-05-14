@@ -5,15 +5,48 @@ on:
   push:
     branches: [main]
 
+# Soft jobs upload SARIF to GitHub Code Scanning, which needs security-events
+# write at the caller level. Reusable-workflow jobs inherit this from the
+# caller's job-level permissions block below.
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
+  # ─── Hard / blocking layer ────────────────────────────────────────────────
   good-infra:
     name: Good infra (expected to pass)
+    permissions:
+      contents: read
+      security-events: write
     uses: ./.github/workflows/policy-check.yml
     with:
-      infra-path: infra
+      infra-path: infra/good
 
   bad-infra:
     name: Bad infra (expected to fail)
+    permissions:
+      contents: read
+      security-events: write
     uses: ./.github/workflows/policy-check.yml
     with:
-      infra-path: infra-bad
+      infra-path: infra/bad
+
+  # ─── Soft / advisory attribute layer ──────────────────────────────────────
+  good-infra-attrs:
+    name: Good infra attributes (advisory)
+    permissions:
+      contents: read
+      security-events: write
+    uses: ./.github/workflows/policy-attributes.yml
+    with:
+      infra-path: infra/good
+
+  bad-infra-attrs:
+    name: Bad infra attributes (advisory)
+    permissions:
+      contents: read
+      security-events: write
+    uses: ./.github/workflows/policy-attributes.yml
+    with:
+      infra-path: infra/bad
