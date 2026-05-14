@@ -23,6 +23,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Compute infra slug
+        # `actions/upload-artifact@v4` rejects `/` in artifact names, so we
+        # derive a slash-free slug from infra-path (e.g. `infra/good` ->
+        # `infra-good`) and reuse it for the code-scanning category too.
+        id: slug
+        run: echo "value=$(echo '${{ inputs.infra-path }}' | tr '/' '-')" >> "$GITHUB_OUTPUT"
+
       - name: Install Trivy
         run: |
           set -euo pipefail
@@ -73,13 +80,13 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy.sarif
-          category: attrs-trivy-${{ inputs.infra-path }}
+          category: attrs-trivy-${{ steps.slug.outputs.value }}
 
       - name: Upload SARIF as workflow artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: attrs-trivy-sarif-${{ inputs.infra-path }}
+          name: attrs-trivy-sarif-${{ steps.slug.outputs.value }}
           path: trivy.sarif
           if-no-files-found: warn
 
@@ -91,6 +98,11 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Compute infra slug
+        # See trivy-attributes job for rationale.
+        id: slug
+        run: echo "value=$(echo '${{ inputs.infra-path }}' | tr '/' '-')" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-python@v5
         with:
@@ -158,12 +170,12 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: results_sarif.sarif
-          category: attrs-checkov-${{ inputs.infra-path }}
+          category: attrs-checkov-${{ steps.slug.outputs.value }}
 
       - name: Upload SARIF as workflow artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: attrs-checkov-sarif-${{ inputs.infra-path }}
+          name: attrs-checkov-sarif-${{ steps.slug.outputs.value }}
           path: results_sarif.sarif
           if-no-files-found: warn
